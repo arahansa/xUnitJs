@@ -1,0 +1,137 @@
+class Assert {
+    static assertEquals(expected, actual){
+        if(expected !== actual){
+            throw new Error(`expected ${expected}, but was ${actual}`);
+        }
+    }
+}
+
+class TestResult{
+    #runCount = 0;
+    #errorCount = 0;
+
+    testStarted(){
+        this.#runCount++;
+    }
+
+    testFailed(){
+        this.#errorCount++;
+    }
+
+    getSummary(){
+        return `${this.#runCount} run, ${this.#errorCount} failed`;
+    }
+}
+
+class TestCase{
+    constructor(name){
+        this.name = name;
+    }
+
+    setUp(){
+    }
+
+    run(result){
+        result.testStarted();
+        this.setUp();
+        const method = this[this.name];
+        if(!method) {
+            // 여기 testFailed 추가됨
+            result.testFailed();
+        }else{
+            method.call(this, result);
+        }
+        this.tearDown();
+    }
+
+    tearDown(){
+
+    }
+}
+
+class WasRun extends TestCase{
+    log;
+
+    constructor(name){
+        super(name);
+    }
+
+    setUp() {
+        this.log = "setUp";
+    }
+
+    testMethod(){
+        this.log += " testMethod";
+    }
+
+    tearDown() {
+        this.log += " tearDown";
+    }
+}
+
+class TestSuite{
+    #tests = [];
+
+    add(test){
+        this.#tests.push(test);
+    }
+
+    run(result){
+        for(let test of this.#tests){
+            test.run(result);
+        }
+        return result;
+    }
+}
+
+class TestCaseTest extends TestCase{
+    wasRun;
+
+    constructor(name){
+        super(name);
+    }
+
+    setUp() {
+
+    }
+
+    testTemplateMethod(){
+        const result = new TestResult();
+        this.wasRun = new WasRun('testMethod');
+        this.wasRun.run(result);
+        Assert.assertEquals("setUp testMethod tearDown", this.wasRun.log);
+    }
+
+    testResult(){
+        const result = new TestResult();
+        this.wasRun = new WasRun('testMethod');
+        this.wasRun.run(result);
+        Assert.assertEquals("1 run, 0 failed", result.getSummary());
+    }
+
+    testFailedResultFormatting(){
+        const result = new TestResult();
+        this.wasRun = new WasRun('testBrokenMethod');
+        this.wasRun.run(result);
+        Assert.assertEquals("1 run, 1 failed", result.getSummary());
+    }
+
+    testSuite(){
+        const suite = new TestSuite();
+        suite.add(new WasRun('testMethod'));
+        suite.add(new WasRun('testBrokenMethod'));
+        const result = new TestResult();
+        suite.run(result);
+        Assert.assertEquals("2 run, 1 failed", result.getSummary());
+    }
+}
+
+const result = new TestResult();
+new TestCaseTest('testTemplateMethod').run(result);
+new TestCaseTest('testResult').run(result);
+new TestCaseTest('testFailedResultFormatting').run(result);
+new TestCaseTest('testFailedResult').run(result);
+new TestCaseTest('testSuite').run(result);
+console.log(result.getSummary());
+
+
